@@ -110,15 +110,28 @@ The keys are resolved at runtime in this order:
 2. **`app_config` table** in Supabase ← the live, no-redeploy store
 3. Supabase Secrets Manager (legacy fallback)
 
-**STATUS: configurable at runtime, no redeploy needed.** PipraPay issues
-per-panel API keys: typically a `ruser` key (verify-only) and an `admin` key
-(full access) against your gateway base URL (e.g.
-`https://pay.yourdomain.tld/api`). Store yours in any of the three layers
-below — the `app_config` table is the live store (60s cache).
+**STATUS: LIVE & CONFIRMED WORKING — end-to-end tested on production.**
+Modern PipraPay panels run the **V3+ API**. The site adapter
+(`src/lib/services/payments.ts`) speaks exactly that dialect:
 
-> Note: calling the gateway **directly from a random server/script** may still
-> return `INVALID_API_KEY` — PipraPay panels commonly domain-lock API keys to
-> the site origin. What matters is the site's own runtime path, which works.
+| Action | Endpoint (on `payment_base_url`) | Header | Key |
+|--------|----------------------------------|--------|-----|
+| Create charge | `POST /checkout/redirect` | `mhs-piprapay-api-key` | **admin** key |
+| Verify payment | `POST /verify-payment` (singular) | `mhs-piprapay-api-key` | `ruser` key |
+| Refund | `POST /refund-payment` | `mhs-piprapay-api-key` | admin key |
+
+> ⚠️ The classic PipraPay docs describe the legacy API (`mh-piprapay-api-key`
+> header, `/create-charge`, `/verify-payments`). Modern panel builds do **not**
+> accept it — requests fail with `INVALID_API_KEY` even when the key string is
+> perfectly correct. The extra **"s"** in `mhs-` is the whole difference.
+> The site adapter already handles this; if you ever write custom scripts
+> against your panel, use the V3+ table above.
+
+Checkout returns `mode:"gateway"` with a real `pp_url`; the pending payment
+record stores the `pp_id` as `gateway_ref`, which verify and refund use. Some
+panels sit behind a Cloudflare WAF that blocks non-browser user agents — the
+adapter already sends a browser-like UA on every gateway call.
+
 > If you ever rotate keys, update the `app_config` rows and the gateway goes
 > live within 60 seconds — **no redeploy needed**:
 
