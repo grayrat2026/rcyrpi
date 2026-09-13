@@ -13,7 +13,7 @@ export const runtime = "edge";
 export async function PUT(req: Request) {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "login_required" }, { status: 401 });
-  const { tran_id, item_id } = await req.json();
+  const { tran_id, item_id, gateway_ref } = await req.json();
   try {
     if (await getPaymentByTran(tran_id)) {
       return NextResponse.json({ ok: true }); // idempotent
@@ -30,6 +30,7 @@ export async function PUT(req: Request) {
       amount: item.amount,
       method: "pending",
       status: "pending",
+      gateway_ref: typeof gateway_ref === "string" && gateway_ref ? gateway_ref : undefined,
       created_at: dbNow(),
     };
     await insertPayment(record);
