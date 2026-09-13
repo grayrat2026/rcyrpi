@@ -49,6 +49,7 @@ import { useI18n } from "@/hooks/use-i18n";
 import { useAuth } from "@/store/auth-store";
 import { BLOOD_GROUPS, BD_DISTRICTS, getThanas, getUpazilas } from "@/data/geo";
 import { cn } from "@/lib/utils";
+import { prepareAvatar } from "@/lib/avatar-image";
 
 /* ---------------- shape returned by GET /api/profile ---------------- */
 
@@ -304,19 +305,18 @@ export function ProfilePage() {
     [form.district]
   );
 
-  /* ---------- avatar (FileReader data-URL, < 300KB — signup rule) ---------- */
+  /* ---------- avatar (auto-compressed <=500KB -> Supabase Storage, inline base64 fallback) ---------- */
   const onAvatar = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (file.size > 300 * 1024) {
-      toast.error(M("ছবির সাইজ ৩০০KB এর কম হতে হবে", "Image must be smaller than 300KB"));
+    if (!file.type.startsWith("image/")) {
+      toast.error(M("শুধু ছবি আপলোড করা যাবে", "Only image files are allowed"));
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => set("avatar_url", String(reader.result));
-    reader.onerror = () => toast.error(t("error_generic"));
-    reader.readAsDataURL(file);
+    void prepareAvatar(file)
+      .then(({ url }) => set("avatar_url", url))
+      .catch(() => toast.error(t("error_generic")));
   };
 
   /* ---------- save (PATCH /api/profile — all editable fields) ---------- */
