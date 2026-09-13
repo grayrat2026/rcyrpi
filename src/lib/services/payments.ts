@@ -111,7 +111,16 @@ export async function gatewayCheckout(input: CheckoutInput): Promise<CheckoutRes
 export async function gatewayVerify(
   tran_id: string,
   gatewayRef?: string
-): Promise<{ verified: boolean; raw?: unknown }> {
+): Promise<{
+  verified: boolean;
+  raw?: unknown;
+  /** real mobile-wallet TrxID (e.g. Nagad "75XODPOF") when the panel returned it */
+  trxid?: string;
+  /** wallet label (e.g. "Nagad Personal") */
+  method?: string;
+  /** sender's wallet number */
+  sender?: string;
+}> {
   const cfg = await getGatewayConfig();
   if (!cfg) return { verified: true }; // fallback mode auto-verified
   try {
@@ -129,7 +138,23 @@ export async function gatewayVerify(
     const status = String(
       data.status ?? data.payment_status ?? data.pp_status ?? ""
     );
-    return { verified: okStatus(status), raw: data };
+    const pick = (...keys: string[]) => {
+      for (const k of keys) {
+        const v = String(data[k] ?? "").trim();
+        if (v && v.toLowerCase() !== "null" && v !== "--") return v;
+      }
+      return undefined;
+    };
+    return {
+      verified: okStatus(status),
+      raw: data,
+      trxid: pick("transaction_id", "trx_id", "trxid", "transaction"),
+      // this panel build sends the wallet label as `gateway` (e.g.
+      // "Mahedi Nagad"); docs say `payment_method` — accept both.
+      method: pick("payment_method", "gateway", "method"),
+      // panel sends `sender`; docs say `sender_number` — accept both.
+      sender: pick("sender", "sender_number"),
+    };
   } catch (e) {
     console.error("gatewayVerify failed:", e instanceof Error ? e.message : e);
     return { verified: false };
