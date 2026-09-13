@@ -2,9 +2,15 @@
 // Payment service — PipraPay gateway adapter + fallback checkout.
 //
 // REAL MODE (auto-enabled when gateway config resolves):
-//   Gateway: PipraPay (self-hosted) — header `mh-piprapay-api-key`.
-//   POST {base}/api/create-charge    -> { pp_id, pp_url }  (ruser key)
-//   POST {base}/api/verify-payments  -> payment info       (admin key)
+//   Gateway: PipraPay (self-hosted, panel build at the self-hosted panel).
+//   Header `mhs-piprapay-api-key` (the panel's getAuthorizationHeader reads
+//   MHS-PIPRAPAY-API-KEY; the docs' `mh-piprapay-api-key` is stale and
+//   always yields INVALID_API_KEY).
+//   POST {base}/checkout/redirect  -> { pp_id, pp_url }   (ADMIN key — the
+//                                    ruser key has no Create Payment scope)
+//   POST {base}/verify-payment     -> payment info         (ruser key —
+//                                    verify_payment scope; singular path!)
+//   POST {base}/refund-payment     -> refund               (admin key, pp_id)
 //   Webhook POST /api/payments/webhook -> re-verified server-side
 //
 // FALLBACK MODE (config missing or gateway call fails):
@@ -38,11 +44,11 @@ export interface CheckoutResult {
 const okStatus = (s: string) =>
   ["VALID", "SUCCESS", "COMPLETED", "PAID", "DONE"].includes(s.toUpperCase());
 
-// pay.invokeil.cfd sits behind Cloudflare, which blocks non-browser
+// the self-hosted panel sits behind Cloudflare, which blocks non-browser
 // user agents (error 1010). Send a browser-like UA on all gateway calls.
 const GW_HEADERS = (key: string): Record<string, string> => ({
   "Content-Type": "application/json",
-  "mh-piprapay-api-key": key,
+  "mhs-piprapay-api-key": key,
   "User-Agent":
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
   Accept: "application/json",
@@ -59,18 +65,20 @@ export async function gatewayCheckout(input: CheckoutInput): Promise<CheckoutRes
     };
   }
 
-  // ---- REAL MODE: PipraPay create-charge ----
+  // ---- REAL MODE: PipraPay checkout/redirect (this panel build's create
+  //      endpoint; /create-charge does not exist here) ----
   try {
-    const res = await fetch(`${cfg.base_url}/create-charge`, {
+    const res = await fetch(`${cfg.base_url}/checkout/redirect`, {
       method: "POST",
-      headers: GW_HEADERS(cfg.ruser_key),
+      // the ruser key is verify-only on this panel — Create Payment needs the admin key
+      headers: GW_HEADERS(cfg.admin_key),
       body: JSON.stringify({
-        cus_name: input.cus_name,
-        cus_email: input.cus_email ?? "",
-        cus_phone: input.cus_phone ?? "",
+        full_name: input.cus_name,
+        email_address: input.cus_email?.trim() || "no-email@rcyrpi.org",
+        mobile_number: input.cus_phone?.trim() || "01700000000",
         amount: String(input.amount),
-        redirect_url: input.success_url,
-        cancel_url: input.cancel_url,
+        currency: input.currency ?? "BDT",
+        return_url: input.success_url,
         webhook_url: `${new URL(input.success_url).origin}/api/payments/webhook`,
         metadata: { tran_id: input.tran_id, product: input.product },
       }),
@@ -99,7 +107,7 @@ export async function gatewayCheckout(input: CheckoutInput): Promise<CheckoutRes
   }
 }
 
-/** verify a transaction via the gateway (admin key) */
+/** verify a transaction via the gateway (ruser key holds verify_payment scope) */
 export async function gatewayVerify(
   tran_id: string,
   gatewayRef?: string
@@ -107,12 +115,14 @@ export async function gatewayVerify(
   const cfg = await getGatewayConfig();
   if (!cfg) return { verified: true }; // fallback mode auto-verified
   try {
-    const res = await fetch(`${cfg.base_url}/verify-payments`, {
+    if (!gatewayRef) {
+      // the panel can only look up transactions by pp_id
+      return { verified: false, raw: { note: "no gateway pp_id for this record" } };
+    }
+    const res = await fetch(`${cfg.base_url}/verify-payment`, {
       method: "POST",
-      headers: GW_HEADERS(cfg.admin_key),
-      body: JSON.stringify(
-        gatewayRef ? { pp_id: gatewayRef, tran_id } : { tran_id }
-      ),
+      headers: GW_HEADERS(cfg.ruser_key),
+      body: JSON.stringify({ pp_id: gatewayRef }),
       signal: AbortSignal.timeout(15000),
     });
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -130,6 +140,7 @@ export async function gatewayVerify(
  *  when unsupported the admin marks the record refunded manually. */
 export async function gatewayRefund(
   tran_id: string,
+  gatewayRef?: string,
   amount?: number
 ): Promise<{ refunded: boolean; raw?: unknown }> {
   const cfg = await getGatewayConfig();
@@ -138,7 +149,7 @@ export async function gatewayRefund(
     const res = await fetch(`${cfg.base_url}/refund-payment`, {
       method: "POST",
       headers: GW_HEADERS(cfg.admin_key),
-      body: JSON.stringify({ tran_id, refund_amount: amount }),
+      body: JSON.stringify({ pp_id: gatewayRef ?? tran_id, refund_amount: amount }),
       signal: AbortSignal.timeout(15000),
     });
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
