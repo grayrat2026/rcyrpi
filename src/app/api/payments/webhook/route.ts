@@ -26,12 +26,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
     const ppId = String(body.pp_id ?? body.id ?? record.gateway_ref ?? "");
-    const { verified } = await gatewayVerify(tranId, ppId || undefined);
+    const { verified, trxid, method: gwMethod, sender } = await gatewayVerify(
+      tranId,
+      ppId || undefined
+    );
     if (verified) {
       await updatePayment(record.id, {
         status: "success",
         method: "gateway",
         gateway_ref: ppId || record.gateway_ref,
+        gateway_trxid: trxid ?? record.gateway_trxid,
+        gateway_method: gwMethod ?? record.gateway_method,
+        sender_number: sender ?? record.sender_number,
         verified_at: dbNow(),
         verified_by: "system:webhook",
       });
