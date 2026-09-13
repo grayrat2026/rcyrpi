@@ -440,8 +440,13 @@ export function PaymentDetailPage() {
                     <p className="font-bold">{t("ev_done")}</p>
                   </div>
                   <p className="mt-2 break-all font-mono text-xs text-brand-green-dark">
-                    {t("pay_txn")}: {myPaid.tran_id}
+                    {t("pay_txn")}: {myPaid.gateway_trxid ?? myPaid.tran_id}
                   </p>
+                  {myPaid.gateway_trxid ? (
+                    <p className="mt-1 break-all font-mono text-[11px] text-brand-green-dark/70">
+                      {t("pay_reference")}: {myPaid.tran_id}
+                    </p>
+                  ) : null}
                 </motion.div>
               ) : !user ? (
                 /* ---- login required ---- */
