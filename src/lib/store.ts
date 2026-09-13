@@ -84,6 +84,7 @@ export function toPayment(r: any): PaymentRecord {
     item_id: r.item_id ?? undefined, item_title: r.item_title,
     amount: num(r.amount), method: r.method, status: r.status,
     gateway_ref: r.gateway_ref ?? undefined, sender_number: r.sender_number ?? undefined,
+    gateway_trxid: r.gateway_trxid ?? undefined, gateway_method: r.gateway_method ?? undefined,
     note: r.note ?? undefined,
     source: r.source ?? "gateway", admin_username: r.admin_username ?? undefined,
     admin_name: r.admin_name ?? undefined,
@@ -353,7 +354,9 @@ export async function insertPayment(p: PaymentRecord): Promise<PaymentRecord> {
     id: p.id, tran_id: p.tran_id, member_id: p.member_id, member_name: p.member_name,
     item_id: p.item_id ?? null, item_title: p.item_title, amount: p.amount,
     method: p.method, status: p.status, gateway_ref: p.gateway_ref ?? null,
-    sender_number: p.sender_number ?? null, note: p.note ?? null,
+    sender_number: p.sender_number ?? null,
+    gateway_trxid: p.gateway_trxid ?? null, gateway_method: p.gateway_method ?? null,
+    note: p.note ?? null,
     source: p.source ?? "gateway", admin_username: p.admin_username ?? null,
     admin_name: p.admin_name ?? null, created_at: p.created_at,
   });
