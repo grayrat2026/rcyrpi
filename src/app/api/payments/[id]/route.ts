@@ -44,7 +44,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   try {
     const p = await getPayment(id);
     if (!p) return NextResponse.json({ error: "not_found" }, { status: 404 });
-    const { refunded } = await gatewayRefund(p.tran_id, p.amount);
+    const { refunded } = await gatewayRefund(p.tran_id, p.gateway_ref, p.amount);
     const patch = {
       status: "refunded" as const,
       note: `Refunded by ${admin.username} (gateway: ${refunded ? "ok" : "manual"})`,
