@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     if (record.status === "success") {
       return NextResponse.json({ payment: record, verified: true });
     }
-    const { verified } = mock
+    const { verified, trxid, method: gwMethod, sender } = mock
       ? { verified: mock === "success" }
       : await gatewayVerify(tran_id, record.gateway_ref);
 
@@ -34,6 +34,9 @@ export async function POST(req: Request) {
     if (verified) {
       await updatePayment(record.id, {
         method, status,
+        gateway_trxid: trxid ?? record.gateway_trxid,
+        gateway_method: gwMethod ?? record.gateway_method,
+        sender_number: sender ?? record.sender_number,
         verified_at: dbNow(),
         verified_by: "system:gateway",
       });
