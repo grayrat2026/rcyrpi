@@ -1,0 +1,43 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+.next/
+out/
+build/
+dist/
+.vercel/
+
+# environment & secrets — NEVER commit real credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# local data & internal tooling
+db/
+tool-results/
+.zscripts/
+worklog.md
+*.sqlite
+
+# packaging
+*.zip
+.pkg_tmp/
+.gh_stage/
+
+# logs & OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# next generated (recreated on dev/build)
+next-env.d.ts
+
+# misc
+*.tsbuildinfo
+.eslintcache
