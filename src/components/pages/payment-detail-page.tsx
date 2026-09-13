@@ -159,6 +159,7 @@ export function PaymentDetailPage() {
         mode?: "gateway" | "mock";
         redirect_url?: string;
         tran_id?: string;
+        gateway_ref?: string;
         error?: string;
       };
       if (!res.ok || !data.redirect_url || !data.tran_id) {
@@ -176,7 +177,11 @@ export function PaymentDetailPage() {
       await fetch("/api/payments/pending", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tran_id: data.tran_id, item_id: item.id }),
+        body: JSON.stringify({
+          tran_id: data.tran_id,
+          item_id: item.id,
+          gateway_ref: data.gateway_ref,
+        }),
       });
       toast.success(
         lang === "bn"
