@@ -132,6 +132,11 @@ record stores the `pp_id` as `gateway_ref`, which verify and refund use. Some
 panels sit behind a Cloudflare WAF that blocks non-browser user agents — the
 adapter already sends a browser-like UA on every gateway call.
 
+Receipts display the REAL mobile-wallet TrxID (`75XODPOF`-style) as
+"Transaction ID", the internal `RCY-...` id as "Reference", plus the wallet
+label and sender number — extracted from verify-payment and stored by the
+verify/webhook routes (see `SUPABASE_SQL/07_payment_gateway_info.sql`).
+
 > If you ever rotate keys, update the `app_config` rows and the gateway goes
 > live within 60 seconds — **no redeploy needed**:
 
