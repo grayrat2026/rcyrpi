@@ -147,6 +147,10 @@ export interface PaymentRecord {
   method: string; // gateway / mock / admin
   status: PayStatus;
   gateway_ref?: string;
+  /** real mobile-wallet TrxID from the gateway (e.g. Nagad "75XODPOF") */
+  gateway_trxid?: string;
+  /** wallet label from the gateway (e.g. "Nagad Personal") */
+  gateway_method?: string;
   sender_number?: string;
   note?: string;
   /** attribution: which admin created/changed this record manually */
