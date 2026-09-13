@@ -53,6 +53,7 @@ import { useEmergency } from "@/components/providers/emergency-popup";
 import { WelcomeScreen } from "@/components/pages/welcome-screen";
 import { BLOOD_GROUPS, BD_DISTRICTS, getThanas, getUpazilas } from "@/data/geo";
 import { cn } from "@/lib/utils";
+import { prepareAvatar } from "@/lib/avatar-image";
 import type { DictKey } from "@/i18n/dictionary";
 import type { SessionUser } from "@/lib/types";
 
@@ -233,19 +234,18 @@ export function SignupPage() {
   const upazilas = f.district ? getUpazilas(f.district) : [];
   const thanas = f.district ? getThanas(f.district) : [];
 
-  /* ---------- avatar ---------- */
+  /* ---------- avatar (auto-compressed <=500KB -> Supabase Storage, inline base64 fallback) ---------- */
   const onAvatar = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (file.size > 300 * 1024) {
-      toast.error(M("ছবির সাইজ ৩০০KB এর কম হতে হবে", "Image must be smaller than 300KB"));
+    if (!file.type.startsWith("image/")) {
+      toast.error(M("শুধু ছবি আপলোড করা যাবে", "Only image files are allowed"));
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setF((p) => ({ ...p, avatar_url: String(reader.result) }));
-    reader.onerror = () => toast.error(t("error_generic"));
-    reader.readAsDataURL(file);
+    void prepareAvatar(file)
+      .then(({ url }) => setF((p) => ({ ...p, avatar_url: url })))
+      .catch(() => toast.error(t("error_generic")));
   };
 
   /* ---------- per-step validation ---------- */
