@@ -242,9 +242,16 @@ export function PaymentSuccessPage() {
               <dl className="mt-3 divide-y divide-black/5">
                 <Row label={t("pay_txn")}>
                   <span className="break-all text-right font-mono text-xs font-semibold">
-                    {payment.tran_id}
+                    {payment.gateway_trxid ?? payment.tran_id}
                   </span>
                 </Row>
+                {payment.gateway_trxid ? (
+                  <Row label={t("pay_reference")}>
+                    <span className="break-all text-right font-mono text-xs text-muted-foreground">
+                      {payment.tran_id}
+                    </span>
+                  </Row>
+                ) : null}
                 <Row label={lang === "bn" ? "আইটেম" : "Item"}>
                   <span className="text-right font-semibold">{L(payment.item_title)}</span>
                 </Row>
@@ -254,8 +261,17 @@ export function PaymentSuccessPage() {
                   </span>
                 </Row>
                 <Row label={t("pay_method")}>
-                  <span className="text-right font-semibold capitalize">{payment.method}</span>
+                  <span className="text-right font-semibold capitalize">
+                    {payment.gateway_method ?? payment.method}
+                  </span>
                 </Row>
+                {payment.sender_number ? (
+                  <Row label={t("pay_sent_from")}>
+                    <span className="break-all text-right font-mono text-xs font-semibold">
+                      {payment.sender_number}
+                    </span>
+                  </Row>
+                ) : null}
                 <Row label={t("pay_status")}>
                   <StatusChip status={payment.status} />
                 </Row>
